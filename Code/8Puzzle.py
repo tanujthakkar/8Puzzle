@@ -17,6 +17,7 @@ import numpy as np
 import argparse
 from pprint import pprint
 import time
+import pandas as pd
 from queue import Queue
 
 
@@ -74,8 +75,6 @@ class EightPuzzle():
         closed_dict = dict()
         parent_index_dict = dict()
 
-        open_set[self.initial_node.index] = self.initial_node.state
-
         tick = time.time()
         while(q.qsize() != 0):
 
@@ -84,12 +83,13 @@ class EightPuzzle():
             parent_index_dict[current_node.index] = current_node.parent_index
 
             if((current_node.state == self.goal_node.state).all()):
-                pprint(vars(current_node))
+                # pprint(vars(current_node))
                 print("Goal Reached!")
                 toc = time.time()
                 print("Took %.03f seconds to train"%((toc-tick)))
                 self.closed_dict = closed_dict
                 self.final_node = current_node
+                self.parent_index_dict = parent_index_dict
                 return True
 
             pos = self.find_zero(current_node.state)
@@ -105,21 +105,23 @@ class EightPuzzle():
                     new_node = Node(new_state, new_index, current_node.index, self.actions)
 
                     if(self.to_tuple(new_state) in closed_dict):
+                        self.current_index -= 1
                         continue
                     
                     q.put(new_node)
 
-                    if((new_node.state == self.goal_node.state).all()):
-                        closed_dict[self.to_tuple(new_node.state)] = new_node.index
-                        parent_index_dict[new_node.index] = new_node.parent_index
-                        pprint(vars(new_node))
-                        print("Goal Node Created!")
-                        toc = time.time()
-                        print("Took %.03f seconds to train"%((toc-tick)))
-                        self.closed_dict = closed_dict
-                        self.final_node = new_node
-                        self.parent_index_dict = parent_index_dict
-                        return True
+                    # if((new_node.state == self.goal_node.state).all()):
+                    #     closed_dict[self.to_tuple(new_node.state)] = new_node.index
+                    #     parent_index_dict[new_node.index] = new_node.parent_index
+                    #     # pprint(vars(new_node))
+                    #     print("Goal Node Created!")
+                    #     toc = time.time()
+                    #     print("Took %.03f seconds to train"%((toc-tick)))
+                    #     self.closed_dict = closed_dict
+                    #     self.final_node = new_node
+                    #     self.parent_index_dict = parent_index_dict
+                    #     return True
+
                 else:
                     # print("Invalid state: \n", new_pos, new_state)
                     pass
@@ -145,13 +147,26 @@ class EightPuzzle():
 
         self.path.reverse()
 
-        for node in path:
-            print(np.asarray(node))
+        # for node in self.path:
+            # print(np.asarray(node))
 
         return self.path
 
-    # def generate_data_files(self) -> None:
+    def generate_data_files(self) -> None:
 
+        # Generating nodesPath.txt
+        path = np.asarray(self.path).reshape(-1, 9)
+        np.savetxt('nodesPath.txt', path, delimiter=' ', fmt='%d')
+
+        # Generating NodesInfo.txt
+        indexes = np.asarray(list(self.parent_index_dict.items()))
+        indexes = np.c_[indexes, np.zeros(len(indexes))]
+        # print(indexes.shape)
+        np.savetxt('NodesInfo.txt', indexes, header="Node_index,Parent_Node_index,Cost", comments='', delimiter=' ', fmt='%d')
+
+        # Generating Nodes.txt
+        visited_states = np.asarray(list(self.closed_dict.keys())).reshape(-1, 9)
+        np.savetxt('Nodes.txt', visited_states, delimiter=' ', fmt='%d')
 
 
 def main():
@@ -167,7 +182,7 @@ def main():
     EP = EightPuzzle(InitialState, GoalState)
     EP.solve()
     EP.backtrack_path()
-
+    EP.generate_data_files()
 
 if __name__ == '__main__':
     main()
