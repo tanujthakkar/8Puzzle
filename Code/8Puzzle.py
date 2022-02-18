@@ -62,9 +62,6 @@ class EightPuzzle():
         else:
             return False
 
-    def calc_index(self, pos:) -> int:
-        return int(pos[0] * self.initial_state.shape[0] + pos[1])
-
     def to_tuple(self, state: np.array) -> tuple:
         return tuple(map(tuple, state))
 
@@ -74,7 +71,6 @@ class EightPuzzle():
 
         q.put(self.initial_node) # Pushing the current node/inital node
 
-        open_set = dict()
         closed_dict = dict()
         parent_index_dict = dict()
 
@@ -83,21 +79,9 @@ class EightPuzzle():
         tick = time.time()
         while(q.qsize() != 0):
 
-            # if(self.current_index%1000):
-                # print(self.current_index)
-
-            # if(((time.time()-tick)/60) > 10.0):
-            #     print("Time Limit Exceeded!")
-            #     return
-
             current_node = q.get()
             closed_dict[self.to_tuple(current_node.state)] = current_node.index
             parent_index_dict[current_node.index] = current_node.parent_index
-            # closed_dict.add(self.to_tuple(current_node.state))
-            # print(self.to_tuple(current_node.state))
-            # input('q')
-            # open_set.pop(current_node.index)
-            # print(current_node.state)
 
             if((current_node.state == self.goal_node.state).all()):
                 pprint(vars(current_node))
@@ -118,17 +102,10 @@ class EightPuzzle():
                     new_index = self.current_index + 1
                     self.current_index = new_index
                     new_action_set = np.delete(np.copy(self.actions), action, axis=0)
-                    # print(new_action_set)
-                    # print(new_action_set.reshape(len(new_action_set)//2, 2))
                     new_node = Node(new_state, new_index, current_node.index, self.actions)
 
                     if(self.to_tuple(new_state) in closed_dict):
-                        # print("In closed_dict")
                         continue
-
-                    # if(new_index not in open_set):
-                    #     print("In open_set")
-                    #     open_set[new_index] = new_state
                     
                     q.put(new_node)
 
@@ -143,39 +120,38 @@ class EightPuzzle():
                         self.final_node = new_node
                         self.parent_index_dict = parent_index_dict
                         return True
-
-                    # pprint(vars(new_node))
-                    # input('q')
                 else:
-                    pass
                     # print("Invalid state: \n", new_pos, new_state)
+                    pass
+
+        return False
 
     def backtrack_path(self) -> list():
 
         current_state = self.to_tuple(self.final_node.state)
         current_index = self.final_node.index
-        path = list()
+        self.path = list()
 
         visited_state_list = list(self.closed_dict.keys())
         visited_index_list = list(self.closed_dict.values())
 
         while(current_index != 0):
 
-            path.append(current_state)
-            print(path[-1])
+            self.path.append(current_state)
             current_index = self.closed_dict[current_state]
             current_state = visited_state_list[visited_index_list.index(self.parent_index_dict[current_index])]
 
         print("Backtracking finished...")
 
-        path.reverse()
+        self.path.reverse()
 
         for node in path:
             print(np.asarray(node))
 
-        self.path = path
-
         return self.path
+
+    # def generate_data_files(self) -> None:
+
 
 
 def main():
