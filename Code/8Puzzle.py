@@ -29,15 +29,11 @@ class Node():
         self.parent_index = parent_index
         self.actions = actions
 
-    def node_summary(self):
-        pprint(self)
-
-
 class EightPuzzle():
 
     def __init__(self, initial_state: list(), goal_state: list()) -> None:
-        self.initial_state = np.uint8(initial_state).reshape(3,3)
-        self.goal_state = np.uint8(goal_state).reshape(3,3)
+        self.initial_state = np.uint8(initial_state).reshape(3,3).transpose()
+        self.goal_state = np.uint8(goal_state).reshape(3,3).transpose()
         self.actions = np.array([[0, 1],
                                  [0, -1],
                                  [-1, 0],
@@ -50,9 +46,9 @@ class EightPuzzle():
         self.final_node = None
         self.path = None
 
-        print("Created a 8 Puzzle with\n")
-        print("Initial State: ", vars(self.initial_node))
-        print("Goal State: ", vars(self.goal_node))
+        print("\nCreated a 8 Puzzle with...\n")
+        print("Initial State: ", self.initial_node.state)
+        print("Goal State: ", self.goal_node.state)
 
     def find_zero(self, state) -> np.array:
         return np.array(np.where(state==0)).flatten()
@@ -64,7 +60,19 @@ class EightPuzzle():
             return False
 
     def to_tuple(self, state: np.array) -> tuple:
-        return tuple(map(tuple, state))
+        return tuple(map(tuple, state.transpose()))
+
+    def is_solvable_state(self, state: np.array) -> bool:
+
+        inversions = 0
+        s = state.reshape(9)
+
+        for i in range(0, 9):
+            for j in range(i+1, 9):
+                if(s[i] != 0 and s[j] != 0 and s[i] > s[j]):
+                    inversions += 1
+
+        return True if(inversions%2 == 0) else False
 
     def solve(self) -> bool:
 
@@ -76,7 +84,7 @@ class EightPuzzle():
         parent_index_dict = dict()
 
         tick = time.time()
-        while(q.qsize() != 0):
+        while(not q.empty()):
 
             current_node = q.get()
             closed_dict[self.to_tuple(current_node.state)] = current_node.index
@@ -91,6 +99,9 @@ class EightPuzzle():
                 self.final_node = current_node
                 self.parent_index_dict = parent_index_dict
                 return True
+
+            if(not self.is_solvable_state(current_node.state)):
+                continue
 
             pos = self.find_zero(current_node.state)
 
@@ -109,18 +120,6 @@ class EightPuzzle():
                         continue
                     
                     q.put(new_node)
-
-                    # if((new_node.state == self.goal_node.state).all()):
-                    #     closed_dict[self.to_tuple(new_node.state)] = new_node.index
-                    #     parent_index_dict[new_node.index] = new_node.parent_index
-                    #     # pprint(vars(new_node))
-                    #     print("Goal Node Created!")
-                    #     toc = time.time()
-                    #     print("Took %.03f seconds to train"%((toc-tick)))
-                    #     self.closed_dict = closed_dict
-                    #     self.final_node = new_node
-                    #     self.parent_index_dict = parent_index_dict
-                    #     return True
 
                 else:
                     # print("Invalid state: \n", new_pos, new_state)
@@ -148,7 +147,7 @@ class EightPuzzle():
         self.path.reverse()
 
         # for node in self.path:
-            # print(np.asarray(node))
+        #     print(np.asarray(node))
 
         return self.path
 
@@ -156,33 +155,59 @@ class EightPuzzle():
 
         # Generating nodesPath.txt
         path = np.asarray(self.path).reshape(-1, 9)
-        np.savetxt('nodesPath.txt', path, delimiter=' ', fmt='%d')
+        np.savetxt('nodePath.txt', path, delimiter=' ', fmt='%d')
 
         # Generating NodesInfo.txt
         indexes = np.asarray(list(self.parent_index_dict.items()))
         indexes = np.c_[indexes, np.zeros(len(indexes))]
-        # print(indexes.shape)
-        np.savetxt('NodesInfo.txt', indexes, header="Node_index,Parent_Node_index,Cost", comments='', delimiter=' ', fmt='%d')
+        np.savetxt('NodesInfo.txt', indexes, header="Node_index Parent_Node_index Cost", comments='', delimiter=' ', fmt='%d')
 
         # Generating Nodes.txt
         visited_states = np.asarray(list(self.closed_dict.keys())).reshape(-1, 9)
         np.savetxt('Nodes.txt', visited_states, delimiter=' ', fmt='%d')
 
 
+def check_solvable(g):
+    arr = np.reshape(g, 9)
+    counter_states = 0
+    for i in range(9):
+        if not arr[i] == 0:
+            check_elem = arr[i]
+            for x in range(i + 1, 9):
+                if check_elem < arr[x] or arr[x] == 0:
+                    continue
+                else:
+                    counter_states += 1
+    if counter_states % 2 == 0:
+        print("The puzzle is solvable, generating path")
+    else:
+        print("The puzzle is insolvable, still creating nodes")
+
+def solvable(state):
+        lstate = state[np.where(state != 0)].flatten()
+        inv = 0
+        for i in range(lstate.shape[0]):
+            for j in range(i + 1, lstate.shape[0]):
+                if lstate[i] > lstate[j]:
+                    inv += 1
+        return True if inv % 2 == 0 else False
+
 def main():
 
     Parser = argparse.ArgumentParser()
-    Parser.add_argument('--InitialState', type=str, default="[[0,1,2],[3,4,5],[6,7,8]]", help='Initial state of the 8 Puzzle problem')
-    Parser.add_argument('--GoalState', type=str, default="[[1,2,3],[4,5,6],[7,8,0]]", help='Goal state of the 8 Puzzle problem')  
+    Parser.add_argument('--InitialState', type=str, default="[[0,3,6],[1,4,7],[2,5,8]]", help='Initial state of the 8 Puzzle problem [column-wise]')
+    Parser.add_argument('--GoalState', type=str, default="[[1,4,7],[2,5,8],[3,6,0]]", help='Goal state of the 8 Puzzle problem [column-wise]')
 
     Args = Parser.parse_args()
     InitialState = Args.InitialState.replace('[', ' ').replace(']', ' ').replace(',', ' ').split()
     GoalState = Args.GoalState.replace('[', ' ').replace(']', ' ').replace(',', ' ').split()
 
     EP = EightPuzzle(InitialState, GoalState)
-    EP.solve()
-    EP.backtrack_path()
-    EP.generate_data_files()
+    if(EP.solve()):
+        EP.backtrack_path()
+        EP.generate_data_files()
+    else:
+        print("Goal state is unrecheable!")
 
 if __name__ == '__main__':
     main()
