@@ -36,7 +36,7 @@ Default Values-
 IntialState = [0,3,6],[1,4,7],[2,5,8]
 GoalState = [1,4,7],[2,5,8],[3,6,0]
 
-Pass the input state column-wise
+Pass the inputs column-wise
 
 4. To run the code for plot_path.py, use the following command -
 
