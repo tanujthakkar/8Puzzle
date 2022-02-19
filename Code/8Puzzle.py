@@ -15,13 +15,20 @@ import sys
 import os
 import numpy as np
 import argparse
-from pprint import pprint
 import time
-import pandas as pd
 from queue import Queue
 
 
 class Node():
+    '''
+        Class to represent nodes in Breadth First Search
+
+        Attributes
+        state: state of the node
+        index: index of the node
+        parent_index: index of parent node
+        actions: Possible actions to generate child nodes
+    '''
 
     def __init__(self, state: np.array, index: int, parent_index: int, actions: np.array) -> None:
         self.state = state
@@ -29,16 +36,37 @@ class Node():
         self.parent_index = parent_index
         self.actions = actions
 
+
 class EightPuzzle():
+    '''
+        Class for the 8 Puzzle Problem
+
+        Attributes
+        initial_state: Initial state of the puzzle
+        goal_state: Goal state of the puzzle
+        actions: All possible actions to generate child nodes
+        current_index: Current index of the search
+        valid: Boolean to verify validity of inital and goal states
+    '''
 
     def __init__(self, initial_state: list(), goal_state: list()) -> None:
         self.initial_state = np.uint8(initial_state).reshape(3,3).transpose()
         self.goal_state = np.uint8(goal_state).reshape(3,3).transpose()
+        self.valid = True
+        if(not self.is_valid_input(self.initial_state)):
+            print("INITIAL STATE INVALID!")
+            self.valid = False
+            return
+        if(not self.is_valid_input(self.goal_state)):
+            print("GOAL STATE INVALID!")
+            self.valid = False
+            return
         self.actions = np.array([[0, 1],
                                  [0, -1],
                                  [-1, 0],
                                  [1, 0]]) # Action Set - RIGHT, LEFT, UP, DOWN
         self.current_index = 0
+
         self.initial_node = Node(self.initial_state, self.current_index, 0, self.actions)
         self.goal_node = Node(self.goal_state, -1, None, None)
         self.closed_dict = None
@@ -47,8 +75,17 @@ class EightPuzzle():
         self.path = None
 
         print("\nCreated a 8 Puzzle with...\n")
-        print("Initial State: ", self.initial_node.state)
-        print("Goal State: ", self.goal_node.state)
+        print("\nInitial State: \n", self.initial_node.state)
+        print("\nGoal State: \n", self.goal_node.state)
+
+    def is_valid_input(self, state) -> bool:
+        valid = np.arange(9)
+        s = state.flatten()
+        for i in s:
+            if(i not in valid or (s == i).sum() != 1):
+                return False
+
+        return True
 
     def find_zero(self, state) -> np.array:
         return np.array(np.where(state==0)).flatten()
@@ -83,6 +120,8 @@ class EightPuzzle():
         closed_dict = dict()
         parent_index_dict = dict()
 
+        print("\nStarting search...")
+
         tick = time.time()
         while(not q.empty()):
 
@@ -91,10 +130,9 @@ class EightPuzzle():
             parent_index_dict[current_node.index] = current_node.parent_index
 
             if((current_node.state == self.goal_node.state).all()):
-                # pprint(vars(current_node))
-                print("Goal Reached!")
+                print("GOAL REACHED!")
                 toc = time.time()
-                print("Took %.03f seconds to train"%((toc-tick)))
+                print("Took %.03f seconds to search the path"%((toc-tick)))
                 self.closed_dict = closed_dict
                 self.final_node = current_node
                 self.parent_index_dict = parent_index_dict
@@ -142,7 +180,7 @@ class EightPuzzle():
             current_index = self.closed_dict[current_state]
             current_state = visited_state_list[visited_index_list.index(self.parent_index_dict[current_index])]
 
-        print("Backtracking finished...")
+        print("BACKTRACKING PATH...")
 
         self.path.reverse()
 
@@ -166,48 +204,26 @@ class EightPuzzle():
         visited_states = np.asarray(list(self.closed_dict.keys())).reshape(-1, 9)
         np.savetxt('Nodes.txt', visited_states, delimiter=' ', fmt='%d')
 
+        print("DATA FILES GENERATED!")
 
-def check_solvable(g):
-    arr = np.reshape(g, 9)
-    counter_states = 0
-    for i in range(9):
-        if not arr[i] == 0:
-            check_elem = arr[i]
-            for x in range(i + 1, 9):
-                if check_elem < arr[x] or arr[x] == 0:
-                    continue
-                else:
-                    counter_states += 1
-    if counter_states % 2 == 0:
-        print("The puzzle is solvable, generating path")
-    else:
-        print("The puzzle is insolvable, still creating nodes")
-
-def solvable(state):
-        lstate = state[np.where(state != 0)].flatten()
-        inv = 0
-        for i in range(lstate.shape[0]):
-            for j in range(i + 1, lstate.shape[0]):
-                if lstate[i] > lstate[j]:
-                    inv += 1
-        return True if inv % 2 == 0 else False
 
 def main():
 
     Parser = argparse.ArgumentParser()
-    Parser.add_argument('--InitialState', type=str, default="[[0,3,6],[1,4,7],[2,5,8]]", help='Initial state of the 8 Puzzle problem [column-wise]')
-    Parser.add_argument('--GoalState', type=str, default="[[1,4,7],[2,5,8],[3,6,0]]", help='Goal state of the 8 Puzzle problem [column-wise]')
+    Parser.add_argument('--InitialState', type=str, default="[0,3,6],[1,4,7],[2,5,8]", help='Initial state of the 8 Puzzle problem [column-wise]')
+    Parser.add_argument('--GoalState', type=str, default="[1,4,7],[2,5,8],[3,6,0]", help='Goal state of the 8 Puzzle problem [column-wise]')
 
     Args = Parser.parse_args()
     InitialState = Args.InitialState.replace('[', ' ').replace(']', ' ').replace(',', ' ').split()
     GoalState = Args.GoalState.replace('[', ' ').replace(']', ' ').replace(',', ' ').split()
 
     EP = EightPuzzle(InitialState, GoalState)
-    if(EP.solve()):
-        EP.backtrack_path()
-        EP.generate_data_files()
-    else:
-        print("Goal state is unrecheable!")
+    if(EP.valid):
+        if(EP.solve()):
+            EP.backtrack_path()
+            EP.generate_data_files()
+        else:
+            print("Goal state is UNRECHEABLE!")
 
 if __name__ == '__main__':
     main()
