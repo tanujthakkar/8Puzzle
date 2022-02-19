@@ -2,7 +2,7 @@
 
 """
 ENPM661 Spring 2022: Planning for Autonomous Robots
-Project 1: 8 Puzzel Problem
+Project 1: 8 Puzzle Problem
 
 Author(s):
 Tanuj Thakkar (tanuj@umd.edu)
@@ -150,9 +150,6 @@ class EightPuzzle():
                     new_action_set = np.delete(np.copy(self.actions), action, axis=0)
                     new_node = Node(new_state, new_index, current_node.index, self.actions)
 
-                    # if(new_index in self.visited_dict):
-                    #     self.current_index -= 1
-                    #     continue
                     if(self.to_tuple(new_state) in s):
                         self.current_index -= 1
                         continue
@@ -165,7 +162,7 @@ class EightPuzzle():
 
         return False
 
-    def backtrack_path(self) -> list():
+    def generate_path(self) -> list():
 
         current_node = self.final_node
         self.path = list()
@@ -218,7 +215,7 @@ def main():
     EP = EightPuzzle(InitialState, GoalState)
     if(EP.valid):
         if(EP.solve()):
-            EP.backtrack_path()
+            EP.generate_path()
             EP.generate_data_files()
         else:
             print("Goal state is UNRECHEABLE!")
