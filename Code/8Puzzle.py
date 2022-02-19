@@ -69,8 +69,8 @@ class EightPuzzle():
 
         self.initial_node = Node(self.initial_state, self.current_index, 0, self.actions)
         self.goal_node = Node(self.goal_state, -1, None, None)
-        self.closed_dict = None
-        self.parent_index_dict = None
+        self.visited_dict = dict()
+        self.parent_index_dict = dict()
         self.final_node = None
         self.path = None
 
@@ -78,7 +78,7 @@ class EightPuzzle():
         print("\nInitial State: \n", self.initial_node.state)
         print("\nGoal State: \n", self.goal_node.state)
 
-    def is_valid_input(self, state) -> bool:
+    def is_valid_input(self, state: np.array) -> bool:
         valid = np.arange(9)
         s = state.flatten()
         for i in s:
@@ -87,17 +87,17 @@ class EightPuzzle():
 
         return True
 
-    def find_zero(self, state) -> np.array:
+    def find_zero(self, state: np.array) -> np.array:
         return np.array(np.where(state==0)).flatten()
 
-    def is_valid_state(self, pos) -> bool:
+    def is_valid_state(self, pos: np.array) -> bool:
         if(pos[0] >= 0 and pos[0] < self.initial_state.shape[0] and pos[1] >= 0 and pos[1] < self.initial_state.shape[1]):
             return True
         else:
             return False
 
     def to_tuple(self, state: np.array) -> tuple:
-        return tuple(map(tuple, state.transpose()))
+        return tuple(map(tuple, state))
 
     def is_solvable_state(self, state: np.array) -> bool:
 
@@ -117,25 +117,22 @@ class EightPuzzle():
 
         q.put(self.initial_node) # Pushing the current node/inital node
 
-        closed_dict = dict()
-        parent_index_dict = dict()
-
         print("\nStarting search...")
+
+        s = set()
 
         tick = time.time()
         while(not q.empty()):
 
             current_node = q.get()
-            closed_dict[self.to_tuple(current_node.state)] = current_node.index
-            parent_index_dict[current_node.index] = current_node.parent_index
+            s.add(self.to_tuple(current_node.state))
+            self.visited_dict[current_node.index] = current_node
 
             if((current_node.state == self.goal_node.state).all()):
                 print("GOAL REACHED!")
                 toc = time.time()
                 print("Took %.03f seconds to search the path"%((toc-tick)))
-                self.closed_dict = closed_dict
                 self.final_node = current_node
-                self.parent_index_dict = parent_index_dict
                 return True
 
             if(not self.is_solvable_state(current_node.state)):
@@ -148,12 +145,15 @@ class EightPuzzle():
                 new_state = np.copy(current_node.state)
                 if(self.is_valid_state(new_pos)):
                     new_state[tuple(pos)], new_state[tuple(new_pos)] = new_state[tuple(new_pos)], new_state[tuple(pos)]
-                    new_index = self.current_index + 1
+                    new_index = self.current_index + 1    
                     self.current_index = new_index
                     new_action_set = np.delete(np.copy(self.actions), action, axis=0)
                     new_node = Node(new_state, new_index, current_node.index, self.actions)
 
-                    if(self.to_tuple(new_state) in closed_dict):
+                    # if(new_index in self.visited_dict):
+                    #     self.current_index -= 1
+                    #     continue
+                    if(self.to_tuple(new_state) in s):
                         self.current_index -= 1
                         continue
                     
@@ -167,41 +167,39 @@ class EightPuzzle():
 
     def backtrack_path(self) -> list():
 
-        current_state = self.to_tuple(self.final_node.state)
-        current_index = self.final_node.index
+        current_node = self.final_node
         self.path = list()
-
-        visited_state_list = list(self.closed_dict.keys())
-        visited_index_list = list(self.closed_dict.values())
-
-        while(current_index != 0):
-
-            self.path.append(current_state)
-            current_index = self.closed_dict[current_state]
-            current_state = visited_state_list[visited_index_list.index(self.parent_index_dict[current_index])]
 
         print("BACKTRACKING PATH...")
 
+        while(current_node.index != 0):
+            self.path.append(current_node.state.transpose())
+            current_node = self.visited_dict[current_node.parent_index]
+
+        self.path.append(self.initial_node.state.transpose())
         self.path.reverse()
 
         # for node in self.path:
-        #     print(np.asarray(node))
+        #     print(node)
 
+        print("BACKTRACKING PATH COMPLETE!")
         return self.path
 
     def generate_data_files(self) -> None:
+
+        print("GENERATING DATA FILES...")
 
         # Generating nodesPath.txt
         path = np.asarray(self.path).reshape(-1, 9)
         np.savetxt('nodePath.txt', path, delimiter=' ', fmt='%d')
 
         # Generating NodesInfo.txt
-        indexes = np.asarray(list(self.parent_index_dict.items()))
-        indexes = np.c_[indexes, np.zeros(len(indexes))]
+        indexes = [[i, self.visited_dict[i].parent_index, 0] for i in self.visited_dict]
+        # indexes = np.c_[indexes, np.zeros(len(indexes))]
         np.savetxt('NodesInfo.txt', indexes, header="Node_index Parent_Node_index Cost", comments='', delimiter=' ', fmt='%d')
 
         # Generating Nodes.txt
-        visited_states = np.asarray(list(self.closed_dict.keys())).reshape(-1, 9)
+        visited_states = [(self.visited_dict[i].state.transpose()).reshape(9) for i in self.visited_dict]
         np.savetxt('Nodes.txt', visited_states, delimiter=' ', fmt='%d')
 
         print("DATA FILES GENERATED!")
@@ -210,7 +208,7 @@ class EightPuzzle():
 def main():
 
     Parser = argparse.ArgumentParser()
-    Parser.add_argument('--InitialState', type=str, default="[0,3,6],[1,4,7],[2,5,8]", help='Initial state of the 8 Puzzle problem [column-wise]')
+    Parser.add_argument('--InitialState', type=str, default="[1,4,7],[5,0,8],[2,3,6]", help='Initial state of the 8 Puzzle problem [column-wise]')
     Parser.add_argument('--GoalState', type=str, default="[1,4,7],[2,5,8],[3,6,0]", help='Goal state of the 8 Puzzle problem [column-wise]')
 
     Args = Parser.parse_args()
