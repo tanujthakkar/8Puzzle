@@ -32,9 +32,11 @@ Instructions -
     
         python 8Puzzle.py --InitialState="[1,4,7],[5,0,8],[2,3,6]" --GoalState="[1,4,7],[2,5,8],[3,6,0]"
 
-        Default Values-
-        IntialState = [0,3,6],[1,4,7],[2,5,8]
-        GoalState = [1,4,7],[2,5,8],[3,6,0]
+Default Values-
+IntialState = [0,3,6],[1,4,7],[2,5,8]
+GoalState = [1,4,7],[2,5,8],[3,6,0]
+
+Pass the input state column-wise
 
 4. To run the code for plot_path.py, use the following command -
 
